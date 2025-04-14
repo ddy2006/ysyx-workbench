@@ -54,17 +54,55 @@ static int cmd_q(char *args) {
 
 static int cmd_help(char *args);
 
+static int cmd_si(char *args) {
+    int step = 1;
+    if (args) {
+        step = atoi(args);  // 解析参数 N
+    }
+    cpu_exec(step);  // 单步执行 N 条指令
+    return 0;
+}
+
+static int cmd_info(char *args) {
+    if (strcmp(args, "r") == 0) {
+        isa_reg_display();
+    } else if (strcmp(args, "w") == 0) {
+        // watchpoint_display();
+    } else {
+        printf("Unknown subcommand: %s\n", args);
+    }
+    return 0;
+}
+
+// static int cmd_x(char *args) {
+//     int n;
+//     vaddr_t addr;
+//     if (sscanf(args, "%d %x", &n, &addr) != 2) {
+//         printf("Usage: x N EXPR\n");
+//         return 0;
+//     }
+//     for (int i = 0; i < n; i++) {
+//         printf("0x%08x: 0x%08x\n", addr, vaddr_read(addr, 4));
+//         addr += 4;
+//     }
+//     return 0;
+// }
+
 static struct {
-  const char *name;
-  const char *description;
-  int (*handler) (char *);
-} cmd_table [] = {
-  { "help", "Display information about all supported commands", cmd_help },
-  { "c", "Continue the execution of the program", cmd_c },
-  { "q", "Exit NEMU", cmd_q },
-
-  /* TODO: Add more commands */
-
+    const char *name;
+    const char *description;
+    int (*handler)(char *);
+} cmd_table[] = {
+    { "help", "Display information about all supported commands", cmd_help },
+    { "c", "Continue the execution of the program", cmd_c },
+    { "q", "Exit NEMU", cmd_q },
+    { "si", "Single step execution (si [N])", cmd_si },
+    { "info", "Print program status (info SUBCMD)", cmd_info },
+    // { "x", "Scan memory (x N EXPR)", cmd_x },
+    // { "p", "Evaluate expression (p EXPR)", cmd_p },
+    // { "w", "Set watchpoint (w EXPR)", cmd_w },
+    // { "d", "Delete watchpoint (d N)", cmd_d },
+    { NULL, NULL, NULL }  // 结束标记
 };
 
 #define NR_CMD ARRLEN(cmd_table)
@@ -73,7 +111,6 @@ static int cmd_help(char *args) {
   /* extract the first argument */
   char *arg = strtok(NULL, " ");
   int i;
-
   if (arg == NULL) {
     /* no argument given */
     for (i = 0; i < NR_CMD; i ++) {

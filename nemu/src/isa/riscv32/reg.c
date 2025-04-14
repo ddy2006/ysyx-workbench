@@ -24,8 +24,24 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
+    printf("Registers:\n");
+    for (int i = 0; i < ARRLEN(regs); i++) {
+        printf("%-5s: 0x%08x\n", regs[i], cpu.gpr[i]);
+    }
+    printf("pc   : 0x%08x\n", cpu.pc);
+    // printf("sizeof word_t =%zu\n",sizeof(word_t));
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
+  *success = true;
+  if (strcmp(s, "pc")) {
+    return cpu.pc;  // 返回程序计数器
+  }
+  for(int i=0;i<32;i++){
+    if(!strcmp(s,regs[i])){
+      return cpu.gpr[i];
+    }
+  }
+  *success=false;
   return 0;
 }
