@@ -18,6 +18,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
+#include "../../../include/memory/vaddr.h"
+#include "../../../include/utils.h"
 
 static int is_batch_mode = false;
 
@@ -49,6 +51,8 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+  cleanup_regex();
+  nemu_state.state = NEMU_QUIT;
   return -1;
 }
 
@@ -57,37 +61,84 @@ static int cmd_help(char *args);
 static int cmd_si(char *args) {
     int step = 1;
     if (args) {
-        step = atoi(args);  // 解析参数 N
+        step = atoi(args);
     }
-    cpu_exec(step);  // 单步执行 N 条指令
+    cpu_exec(step);
     return 0;
 }
 
 static int cmd_info(char *args) {
     if (strcmp(args, "r") == 0) {
         isa_reg_display();
+        // printf("222\n");
     } else if (strcmp(args, "w") == 0) {
-        // watchpoint_display();
+        watchpoint_display();
     } else {
         printf("Unknown subcommand: %s\n", args);
     }
     return 0;
 }
 
-// static int cmd_x(char *args) {
-//     int n;
-//     vaddr_t addr;
-//     if (sscanf(args, "%d %x", &n, &addr) != 2) {
-//         printf("Usage: x N EXPR\n");
-//         return 0;
-//     }
-//     for (int i = 0; i < n; i++) {
-//         printf("0x%08x: 0x%08x\n", addr, vaddr_read(addr, 4));
-//         addr += 4;
-//     }
-//     return 0;
-// }
+static int cmd_x(char *args) {
+  int n;
+  vaddr_t addr;
+  if (sscanf(args, "%d %x", &n, &addr) != 2) {
+      printf("Usage: x N EXPR\n");
+      return 0;
+  }
+  for(int i=0;i<n;i++){
+    printf("%08x:",addr+i*4);
+    printf("%08x\n",vaddr_read(addr+i*4,4));
+  }
+  return 0;
+}
 
+static int cmd_p(char *args){
+  bool success;
+  // printf("111\n");
+  printf("%d\n",expr(args , &success));
+  return 0;
+}
+
+static int cmd_w(char *args) {
+  if (!args) {
+    printf("Usage: w EXPR\n");
+    return 0;
+  }
+  WP *wp = new_wp();
+  strncpy(wp->expr, args, sizeof(wp->expr) - 1);
+  wp->expr[sizeof(wp->expr) - 1] = '\0';
+  bool success;
+  wp->old_val = expr(args, &success);
+  if (!success) {
+    printf("Error: Invalid expression '%s'\n", args);
+    free_wp(wp);
+    return 0;
+  }
+  printf("Watchpoint %d: %s\n", wp->NO, wp->expr);
+  return 0;
+}
+
+static int cmd_d(char *args) {
+  if (!args) {
+    printf("Usage: d N\n");
+    return 0;
+  }
+  char *endptr;
+  long no = strtol(args, &endptr, 10);
+  if (*endptr != '\0' || no < 0) {
+    printf("Error: Invalid watchpoint number '%s'\n", args);
+    return 0;
+  }
+  WP *wp = find_wp((int)no); // Use find_wp instead of direct head access
+  if (!wp) {
+    printf("Error: Watchpoint %d not found\n", (int)no);
+    return 0;
+  }
+  free_wp(wp);
+  printf("Watchpoint %d deleted\n", (int)no);
+  return 0;
+}
 static struct {
     const char *name;
     const char *description;
@@ -98,10 +149,10 @@ static struct {
     { "q", "Exit NEMU", cmd_q },
     { "si", "Single step execution (si [N])", cmd_si },
     { "info", "Print program status (info SUBCMD)", cmd_info },
-    // { "x", "Scan memory (x N EXPR)", cmd_x },
-    // { "p", "Evaluate expression (p EXPR)", cmd_p },
-    // { "w", "Set watchpoint (w EXPR)", cmd_w },
-    // { "d", "Delete watchpoint (d N)", cmd_d },
+    { "x", "Scan memory (x N EXPR)", cmd_x },
+    { "p", "Evaluate expression (p EXPR)", cmd_p },
+    { "w", "Set watchpoint (w EXPR)", cmd_w },
+    { "d", "Delete watchpoint (d N)", cmd_d },
     { NULL, NULL, NULL }  // 结束标记
 };
 

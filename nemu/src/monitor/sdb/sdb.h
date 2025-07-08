@@ -18,6 +18,29 @@
 
 #include <common.h>
 
-word_t expr(char *e, bool *success);
+#define NR_WP 32
+
+typedef struct watchpoint {
+  int NO;
+  char expr[32];
+  uint32_t old_val;
+  struct watchpoint *next;
+
+  /* TODO: Add more members if necessary */
+
+} WP;
+
+uint32_t expr(char *e, bool *success);
+void init_regex();
+void cleanup_regex();
+void init_wp_pool();
+void sdb_set_batch_mode();
+void sdb_mainloop();
+void init_sdb();
+WP* new_wp();
+WP* find_wp(int no);
+void free_wp(WP *wp);
+void watchpoint_display();
+void check_watchpoints();
 
 #endif
